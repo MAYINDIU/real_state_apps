@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:realestate/screens/clients.dart';
 import 'package:realestate/screens/login.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
@@ -169,7 +170,12 @@ class _DashboardPageState extends State<DashboardPage> {
                   _buildCard(
                     "Client Information",
                     "assets/icons/clientinfo.png",
-                    () {},
+                    () {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(builder: (_) => const ClientsPage()),
+                      );
+                    },
                   ),
                   _buildCard(
                     "Reference Information",
