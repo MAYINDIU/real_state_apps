@@ -1,6 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:realestate/screens/clients.dart';
+import 'package:realestate/screens/flatplot.dart';
 import 'package:realestate/screens/login.dart';
+import 'package:realestate/screens/projects.dart';
+import 'package:realestate/screens/referenceinfo.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 class DashboardPage extends StatefulWidget {
@@ -166,7 +169,14 @@ class _DashboardPageState extends State<DashboardPage> {
                 crossAxisSpacing: 12,
                 childAspectRatio: 1,
                 children: [
-                  _buildCard("Project", "assets/icons/project.png", () {}),
+                  _buildCard("Project", "assets/icons/project.png", () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (_) => const ProjectInfoPage(),
+                      ),
+                    );
+                  }),
                   _buildCard(
                     "Client Information",
                     "assets/icons/clientinfo.png",
@@ -180,10 +190,22 @@ class _DashboardPageState extends State<DashboardPage> {
                   _buildCard(
                     "Reference Information",
                     "assets/icons/reference.png",
-                    () {},
+                    () {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (_) => const ReferenceInfoPage(),
+                        ),
+                      );
+                    },
                   ),
                   _buildCard("Flat Sale", "assets/icons/flatsale.png", () {}),
-                  _buildCard("Flat -Plot", "assets/icons/flot.png", () {}),
+                  _buildCard("Flat -Plot", "assets/icons/flot.png", () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(builder: (_) => const FlatPlotPage()),
+                    );
+                  }),
                   _buildCard(
                     "Collection",
                     "assets/icons/collection.png",

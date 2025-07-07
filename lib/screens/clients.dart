@@ -155,11 +155,21 @@ class _ClientsPageState extends State<ClientsPage> {
                     _buildField("Mobile", controller: mobile),
                     _buildField("NID", controller: nid),
                     _buildField("Present Address", controller: presAddr),
-                    _buildField("Permanent Address", controller: permAddr),
                   ],
                 ),
                 const SizedBox(height: 12),
-                _buildFullWidthField("Remarks", controller: rmks),
+                Row(
+                  children: [
+                    Expanded(
+                      child: _buildField(
+                        "Permanent Address",
+                        controller: permAddr,
+                      ),
+                    ),
+                    const SizedBox(width: 10),
+                    Expanded(child: _buildField("Remarks", controller: rmks)),
+                  ],
+                ),
                 const SizedBox(height: 20),
                 Row(
                   mainAxisAlignment: MainAxisAlignment.end,
@@ -168,7 +178,7 @@ class _ClientsPageState extends State<ClientsPage> {
                       onPressed: () => Navigator.pop(context),
                       style: OutlinedButton.styleFrom(
                         backgroundColor: Colors.red.shade100,
-                        side: BorderSide(color: Colors.red),
+                        side: const BorderSide(color: Colors.red),
                       ),
                       child: const Text(
                         "CANCEL",
@@ -242,23 +252,6 @@ class _ClientsPageState extends State<ClientsPage> {
     );
   }
 
-  Widget _buildFullWidthField(
-    String label, {
-    TextEditingController? controller,
-  }) {
-    return TextField(
-      controller: controller,
-      maxLines: 3,
-      decoration: InputDecoration(
-        labelText: label,
-        hintText: label,
-        border: const OutlineInputBorder(),
-        filled: true,
-        fillColor: Colors.white,
-      ),
-    );
-  }
-
   Future<void> _addClient(
     String name,
     String spouse,
@@ -296,23 +289,13 @@ class _ClientsPageState extends State<ClientsPage> {
     );
 
     if (response.statusCode == 200 || response.statusCode == 201) {
-      final resData = json.decode(response.body);
-      if (resData['message'] == "Data Created successfully") {
-        await fetchClients();
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Client added successfully'),
-            backgroundColor: Colors.green,
-          ),
-        );
-      } else {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(resData['message'] ?? 'Unknown response'),
-            backgroundColor: Colors.orange,
-          ),
-        );
-      }
+      await fetchClients();
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Client added successfully'),
+          backgroundColor: Colors.green,
+        ),
+      );
     } else {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
@@ -323,8 +306,167 @@ class _ClientsPageState extends State<ClientsPage> {
     }
   }
 
+  Future<void> _updateClient(
+    int id,
+    String name,
+    String spouse,
+    String father,
+    String mother,
+    String mobile,
+    String nid,
+    String presAddr,
+    String permAddr,
+    String rmks,
+  ) async {
+    if (authToken == null || compId == null) return;
+
+    final response = await http.patch(
+      Uri.parse("http://localhost:5002/api/client_update/$id"),
+      headers: {
+        "Authorization": "Bearer $authToken",
+        "Content-Type": "application/json",
+      },
+      body: jsonEncode({
+        "name": name,
+        "spouse": spouse,
+        "father": father,
+        "mother": mother,
+        "mobile": mobile,
+        "nid": nid,
+        "pres_addr": presAddr,
+        "perm_addr": permAddr,
+        "rmks": rmks,
+        "comp_id": compId,
+      }),
+    );
+
+    if (response.statusCode == 200) {
+      await fetchClients();
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Client updated successfully'),
+          backgroundColor: Colors.green,
+        ),
+      );
+    } else {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Failed to update client: ${response.statusCode}'),
+          backgroundColor: Colors.red,
+        ),
+      );
+    }
+  }
+
+  void _editClient(Map client) {
+    final name = TextEditingController(text: client['name'] ?? '');
+    final spouse = TextEditingController(text: client['spouse'] ?? '');
+    final father = TextEditingController(text: client['father'] ?? '');
+    final mother = TextEditingController(text: client['mother'] ?? '');
+    final mobile = TextEditingController(text: client['mobile'] ?? '');
+    final nid = TextEditingController(text: client['nid'] ?? '');
+    final presAddr = TextEditingController(text: client['pres_addr'] ?? '');
+    final permAddr = TextEditingController(text: client['perm_addr'] ?? '');
+    final rmks = TextEditingController(text: client['rmks'] ?? '');
+
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
+      ),
+      builder: (context) {
+        return Padding(
+          padding: EdgeInsets.only(
+            bottom: MediaQuery.of(context).viewInsets.bottom,
+            top: 20,
+            left: 16,
+            right: 16,
+          ),
+          child: SingleChildScrollView(
+            child: Column(
+              children: [
+                Center(
+                  child: Text(
+                    "Edit Client",
+                    style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+                  ),
+                ),
+                const SizedBox(height: 20),
+                Wrap(
+                  spacing: 10,
+                  runSpacing: 12,
+                  children: [
+                    _buildField(
+                      "Client ID",
+                      initialValue: client['client_id'],
+                      readOnly: true,
+                    ),
+                    _buildField("Name", controller: name),
+                    _buildField("Spouse", controller: spouse),
+                    _buildField("Father", controller: father),
+                    _buildField("Mother", controller: mother),
+                    _buildField("Mobile", controller: mobile),
+                    _buildField("NID", controller: nid),
+                    _buildField("Present Address", controller: presAddr),
+                  ],
+                ),
+                const SizedBox(height: 12),
+                Row(
+                  children: [
+                    Expanded(
+                      child: _buildField(
+                        "Permanent Address",
+                        controller: permAddr,
+                      ),
+                    ),
+                    const SizedBox(width: 10),
+                    Expanded(child: _buildField("Remarks", controller: rmks)),
+                  ],
+                ),
+                const SizedBox(height: 20),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.end,
+                  children: [
+                    OutlinedButton(
+                      onPressed: () => Navigator.pop(context),
+                      child: const Text(
+                        "CANCEL",
+                        style: TextStyle(color: Colors.red),
+                      ),
+                    ),
+                    const SizedBox(width: 10),
+                    ElevatedButton.icon(
+                      icon: const Icon(Icons.update),
+                      label: const Text("UPDATE"),
+                      onPressed: () async {
+                        await _updateClient(
+                          client['id'],
+                          name.text,
+                          spouse.text,
+                          father.text,
+                          mother.text,
+                          mobile.text,
+                          nid.text,
+                          presAddr.text,
+                          permAddr.text,
+                          rmks.text,
+                        );
+                        Navigator.pop(context);
+                      },
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 20),
+              ],
+            ),
+          ),
+        );
+      },
+    );
+  }
+
   Future<void> _deleteClient(String clientIdNumber) async {
-    // Here clientIdNumber is the database numeric ID, e.g. "19"
     if (authToken == null) return;
 
     final response = await http.delete(
@@ -347,16 +489,9 @@ class _ClientsPageState extends State<ClientsPage> {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text('Failed to delete client: ${response.statusCode}'),
-          backgroundColor: Colors.red,
         ),
       );
     }
-  }
-
-  void _editClient(Map client) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text('Edit client: ${client['client_id']}')),
-    );
   }
 
   Widget _buildClientCard(Map client) {
@@ -388,17 +523,10 @@ class _ClientsPageState extends State<ClientsPage> {
                   const SizedBox(width: 8),
                   IconButton(
                     icon: const Icon(Icons.phone, color: Colors.green),
-                    tooltip: 'Call',
                     onPressed: () async {
                       final Uri phoneUri = Uri(scheme: 'tel', path: mobile);
                       if (await canLaunchUrl(phoneUri)) {
                         await launchUrl(phoneUri);
-                      } else {
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          const SnackBar(
-                            content: Text('Could not launch phone app'),
-                          ),
-                        );
                       }
                     },
                   ),
@@ -406,50 +534,18 @@ class _ClientsPageState extends State<ClientsPage> {
               ),
           ],
         ),
-        trailing: SizedBox(
-          width: 96,
-          child: Row(
-            mainAxisAlignment: MainAxisAlignment.end,
-            children: [
-              IconButton(
-                icon: const Icon(Icons.edit, color: Colors.blue),
-                tooltip: 'Edit',
-                onPressed: () => _editClient(client),
-              ),
-              IconButton(
-                icon: const Icon(Icons.delete, color: Colors.red),
-                tooltip: 'Delete',
-                onPressed: () {
-                  showDialog(
-                    context: context,
-                    builder: (context) => AlertDialog(
-                      title: const Text('Confirm Delete'),
-                      content: Text(
-                        'Are you sure you want to delete client "${client['name']}"?',
-                      ),
-                      actions: [
-                        TextButton(
-                          onPressed: () => Navigator.pop(context),
-                          child: const Text('Cancel'),
-                        ),
-                        TextButton(
-                          onPressed: () {
-                            Navigator.pop(context);
-                            // Pass numeric ID from client['id'] for deletion
-                            _deleteClient(client['id'].toString());
-                          },
-                          child: const Text(
-                            'Delete',
-                            style: TextStyle(color: Colors.red),
-                          ),
-                        ),
-                      ],
-                    ),
-                  );
-                },
-              ),
-            ],
-          ),
+        trailing: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            IconButton(
+              icon: const Icon(Icons.edit, color: Colors.blue),
+              onPressed: () => _editClient(client),
+            ),
+            IconButton(
+              icon: const Icon(Icons.delete, color: Colors.red),
+              onPressed: () => _deleteClient(client['id'].toString()),
+            ),
+          ],
         ),
       ),
     );
