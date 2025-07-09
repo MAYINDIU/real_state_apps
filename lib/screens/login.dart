@@ -25,8 +25,10 @@ class _LoginPageState extends State<LoginPage> {
 
     final username = _usernameController.text.trim();
     final password = _passwordController.text.trim();
-    final loginUrl = Uri.parse('http://localhost:5002/api/login');
-    final userUrl = Uri.parse('http://localhost:5002/api/user/$username');
+    final loginUrl = Uri.parse('https://darktechteam.com/realestate/api/login');
+    final userUrl = Uri.parse(
+      'https://darktechteam.com/realestate/api/user/$username',
+    );
 
     try {
       // Step 1: Login and get token

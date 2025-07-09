@@ -39,7 +39,9 @@ class _ReferenceInfoPageState extends State<ReferenceInfoPage> {
 
   Future<void> fetchReferences() async {
     final response = await http.get(
-      Uri.parse('http://localhost:5002/api/all_reference?compId=$compId'),
+      Uri.parse(
+        'https://darktechteam.com/realestate/api/all_reference?compId=$compId',
+      ),
       headers: {'Authorization': 'Bearer $authToken'},
     );
 
@@ -207,7 +209,7 @@ class _ReferenceInfoPageState extends State<ReferenceInfoPage> {
     String rmks,
   ) async {
     await http.post(
-      Uri.parse('http://localhost:5002/api/create_reference'),
+      Uri.parse('https://darktechteam.com/realestate/api/create_reference'),
       headers: {
         'Authorization': 'Bearer $authToken',
         'Content-Type': 'application/json',
@@ -232,7 +234,7 @@ class _ReferenceInfoPageState extends State<ReferenceInfoPage> {
     String rmks,
   ) async {
     await http.patch(
-      Uri.parse('http://localhost:5002/api/reference_update/$id'),
+      Uri.parse('https://darktechteam.com/realestate/api/reference_update/$id'),
       headers: {
         'Authorization': 'Bearer $authToken',
         'Content-Type': 'application/json',
@@ -250,7 +252,7 @@ class _ReferenceInfoPageState extends State<ReferenceInfoPage> {
 
   Future<void> _deleteReference(int id) async {
     await http.delete(
-      Uri.parse('http://localhost:5002/api/reference_delete/$id'),
+      Uri.parse('https://darktechteam.com/realestate/api/reference_delete/$id'),
       headers: {'Authorization': 'Bearer $authToken'},
     );
     fetchReferences();

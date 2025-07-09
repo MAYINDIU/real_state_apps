@@ -38,7 +38,9 @@ class _ProjectInfoPageState extends State<ProjectInfoPage> {
 
   Future<void> fetchProjects() async {
     final response = await http.get(
-      Uri.parse('http://localhost:5002/api/all_project?compId=$compId'),
+      Uri.parse(
+        'https://darktechteam.com/realestate/api/all_project?compId=$compId',
+      ),
       headers: {'Authorization': 'Bearer $authToken'},
     );
 
@@ -103,7 +105,7 @@ class _ProjectInfoPageState extends State<ProjectInfoPage> {
 
     if (confirmed == true) {
       final response = await http.delete(
-        Uri.parse('http://localhost:5002/api/project_delete/$id'),
+        Uri.parse('https://darktechteam.com/realestate/api/project_delete/$id'),
         headers: {'Authorization': 'Bearer $authToken'},
       );
 
@@ -406,7 +408,7 @@ class _ProjectInfoPageState extends State<ProjectInfoPage> {
                         if (isEdit) {
                           response = await http.patch(
                             Uri.parse(
-                              'http://localhost:5002/api/project_update/${project!['id']}',
+                              'https://darktechteam.com/realestate/api/project_update/${project!['id']}',
                             ),
                             headers: {
                               'Authorization': 'Bearer $authToken',
@@ -424,7 +426,7 @@ class _ProjectInfoPageState extends State<ProjectInfoPage> {
                         } else {
                           response = await http.post(
                             Uri.parse(
-                              'http://localhost:5002/api/create_project',
+                              'https://darktechteam.com/realestate/api/create_project',
                             ),
                             headers: {
                               'Authorization': 'Bearer $authToken',

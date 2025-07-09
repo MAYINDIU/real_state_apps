@@ -47,7 +47,9 @@ class _ClientsPageState extends State<ClientsPage> {
     if (authToken == null || compId == null) return;
 
     final response = await http.get(
-      Uri.parse("http://localhost:5002/api/all_client?compId=$compId"),
+      Uri.parse(
+        "https://darktechteam.com/realestate/api/all_client?compId=$compId",
+      ),
       headers: {
         "Authorization": "Bearer $authToken",
         "Content-Type": "application/json",
@@ -267,7 +269,7 @@ class _ClientsPageState extends State<ClientsPage> {
     if (authToken == null || compId == null) return;
 
     final response = await http.post(
-      Uri.parse("http://localhost:5002/api/create_client"),
+      Uri.parse("https://darktechteam.com/realestate/api/create_client"),
       headers: {
         "Authorization": "Bearer $authToken",
         "Content-Type": "application/json",
@@ -321,7 +323,7 @@ class _ClientsPageState extends State<ClientsPage> {
     if (authToken == null || compId == null) return;
 
     final response = await http.patch(
-      Uri.parse("http://localhost:5002/api/client_update/$id"),
+      Uri.parse("https://darktechteam.com/realestate/api/client_update/$id"),
       headers: {
         "Authorization": "Bearer $authToken",
         "Content-Type": "application/json",
@@ -470,7 +472,9 @@ class _ClientsPageState extends State<ClientsPage> {
     if (authToken == null) return;
 
     final response = await http.delete(
-      Uri.parse("http://localhost:5002/api/client_delete/$clientIdNumber"),
+      Uri.parse(
+        "https://darktechteam.com/realestate/api/client_delete/$clientIdNumber",
+      ),
       headers: {
         "Authorization": "Bearer $authToken",
         "Content-Type": "application/json",

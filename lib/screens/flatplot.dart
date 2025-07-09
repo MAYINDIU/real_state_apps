@@ -42,7 +42,9 @@ class _FlatPlotPageState extends State<FlatPlotPage> {
 
   Future<void> fetchProjects() async {
     final res = await http.get(
-      Uri.parse('http://localhost:5002/api/all_project?compId=$compId'),
+      Uri.parse(
+        'https://darktechteam.com/realestate/api/all_project?compId=$compId',
+      ),
       headers: {'Authorization': 'Bearer $authToken'},
     );
     if (res.statusCode == 200) {
@@ -55,7 +57,9 @@ class _FlatPlotPageState extends State<FlatPlotPage> {
 
   Future<void> fetchFlats() async {
     final res = await http.get(
-      Uri.parse('http://localhost:5002/api/all_flat_plot?compId=$compId'),
+      Uri.parse(
+        'https://darktechteam.com/realestate/api/all_flat_plot?compId=$compId',
+      ),
       headers: {'Authorization': 'Bearer $authToken'},
     );
     if (res.statusCode == 200) {
@@ -334,7 +338,7 @@ class _FlatPlotPageState extends State<FlatPlotPage> {
                             if (isEdit) {
                               response = await http.patch(
                                 Uri.parse(
-                                  'http://localhost:5002/api/plat_plot_update/${flat!['id']}',
+                                  'https://darktechteam.com/realestate/api/plat_plot_update/${flat!['id']}',
                                 ),
                                 headers: {
                                   'Authorization': 'Bearer $authToken',
@@ -345,7 +349,7 @@ class _FlatPlotPageState extends State<FlatPlotPage> {
                             } else {
                               response = await http.post(
                                 Uri.parse(
-                                  'http://localhost:5002/api/create_flat_plot',
+                                  'https://darktechteam.com/realestate/api/create_flat_plot',
                                 ),
                                 headers: {
                                   'Authorization': 'Bearer $authToken',
