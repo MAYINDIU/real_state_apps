@@ -11,286 +11,108 @@ class FlatSalePage extends StatefulWidget {
 }
 
 class _FlatSalePageState extends State<FlatSalePage> {
-  List<dynamic> sales = [];
-  List<dynamic> filteredSales = [];
-  String? authToken;
-  int compId = 1;
-  final TextEditingController _searchController = TextEditingController();
-  bool isLoading = true;
+  int? compId;
+  String? token;
+
+  List clients = [];
+  List projects = [];
+  List flats = [];
+  List sales = [];
 
   @override
   void initState() {
     super.initState();
-    _loadData();
+    loadInitial();
   }
 
-  Future<void> _loadData() async {
+  Future<void> loadInitial() async {
     final prefs = await SharedPreferences.getInstance();
-    authToken = prefs.getString('auth_token');
-    compId = prefs.getInt('comp_id') ?? 1;
-    await fetchFlatSales();
+    token = prefs.getString('auth_token');
+    compId = prefs.getInt('comp_id');
+
+    await Future.wait([
+      fetchClients(),
+      fetchProjects(),
+      fetchFlats(),
+      fetchSales(),
+    ]);
   }
 
-  Future<void> fetchFlatSales() async {
-    setState(() {
-      isLoading = true;
-    });
-
-    final response = await http.get(
+  Future<void> fetchClients() async {
+    final res = await http.get(
       Uri.parse(
-        'https://darktechteam.com/realestate/api/all_flat_sale?compId=$compId',
+        "https://darktechteam.com/realestate/api/all_client?compId=$compId",
       ),
-      headers: {'Authorization': 'Bearer $authToken'},
+      headers: {'Authorization': 'Bearer $token'},
     );
-
-    if (response.statusCode == 200) {
-      final jsonData = json.decode(response.body);
+    if (res.statusCode == 200) {
       setState(() {
-        sales = jsonData['data'];
-        filteredSales = sales;
-        isLoading = false;
+        clients = jsonDecode(res.body)['data'];
       });
-    } else {
-      setState(() {
-        isLoading = false;
-      });
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Failed to load flat sales')),
-      );
     }
   }
 
-  void _filterSales(String query) {
-    setState(() {
-      filteredSales = sales.where((sale) {
-        final flatId = sale['flat_id'].toString();
-        final clientId = sale['client_id'].toString();
-        return flatId.contains(query) || clientId.contains(query);
-      }).toList();
-    });
-  }
-
-  Future<void> deleteFlatSale(int id) async {
-    final confirm = await showDialog<bool>(
-      context: context,
-      builder: (ctx) => AlertDialog(
-        title: const Text('Confirm Delete'),
-        content: const Text('Are you sure you want to delete this sale?'),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(ctx, false),
-            child: const Text('Cancel'),
-          ),
-          TextButton(
-            onPressed: () => Navigator.pop(ctx, true),
-            child: const Text('Delete'),
-          ),
-        ],
+  Future<void> fetchProjects() async {
+    final res = await http.get(
+      Uri.parse(
+        "https://darktechteam.com/realestate/api/all_project?compId=$compId",
       ),
+      headers: {'Authorization': 'Bearer $token'},
     );
-
-    if (confirm == true) {
-      final response = await http.delete(
-        Uri.parse('http://localhost:5002/api/plat_sale_delete/$id'),
-        headers: {'Authorization': 'Bearer $authToken'},
-      );
-      if (response.statusCode == 200) {
-        await fetchFlatSales();
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Sale deleted successfully')),
-        );
-      } else {
-        ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(const SnackBar(content: Text('Failed to delete sale')));
-      }
+    if (res.statusCode == 200) {
+      setState(() {
+        projects = jsonDecode(res.body)['data'];
+      });
     }
   }
 
-  void _showAddEditBottomSheet({Map? sale}) {
-    final isEdit = sale != null;
+  Future<void> fetchFlats() async {
+    final res = await http.get(
+      Uri.parse(
+        "https://darktechteam.com/realestate/api/all_flat_plot?compId=$compId",
+      ),
+      headers: {'Authorization': 'Bearer $token'},
+    );
+    if (res.statusCode == 200) {
+      setState(() {
+        flats = jsonDecode(res.body)['data'];
+      });
+    }
+  }
 
-    final clientIdController = TextEditingController(
-      text: sale?['client_id']?.toString() ?? '',
+  Future<void> fetchSales() async {
+    final res = await http.get(
+      Uri.parse(
+        "https://darktechteam.com/realestate/api/all_flat_sale?compId=$compId",
+      ),
+      headers: {'Authorization': 'Bearer $token'},
     );
-    final flatIdController = TextEditingController(
-      text: sale?['flat_id']?.toString() ?? '',
-    );
-    final sizeController = TextEditingController(
-      text: sale?['f_size']?.toString() ?? '',
-    );
-    final rateController = TextEditingController(
-      text: sale?['rate_psqf']?.toString() ?? '',
-    );
-    final discAmtController = TextEditingController(
-      text: sale?['disc_amt']?.toString() ?? '',
-    );
-    final bookingAmtController = TextEditingController(
-      text: sale?['booking_amt']?.toString() ?? '',
-    );
-    final downAmtController = TextEditingController(
-      text: sale?['down_amt']?.toString() ?? '',
-    );
+    if (res.statusCode == 200) {
+      setState(() {
+        sales = jsonDecode(res.body)['data'];
+      });
+    }
+  }
 
-    showModalBottomSheet(
-      context: context,
+  void openForm({Map? initialData}) async {
+    await showModalBottomSheet(
       isScrollControlled: true,
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
-      ),
-      builder: (context) {
-        return Padding(
-          padding: EdgeInsets.only(
-            bottom: MediaQuery.of(context).viewInsets.bottom,
-            top: 20,
-            left: 16,
-            right: 16,
-          ),
-          child: SingleChildScrollView(
-            child: Column(
-              children: [
-                Text(
-                  isEdit ? 'Edit Flat Sale' : 'Add Flat Sale',
-                  style: const TextStyle(
-                    fontSize: 18,
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
-                const SizedBox(height: 20),
-                _formInput('Client ID', clientIdController),
-                _formInput('Flat ID', flatIdController),
-                _formInput('Flat Size', sizeController, number: true),
-                _formInput('Rate/Sq.Ft.', rateController, number: true),
-                _formInput('Discount Amount', discAmtController, number: true),
-                _formInput(
-                  'Booking Amount',
-                  bookingAmtController,
-                  number: true,
-                ),
-                _formInput('Down Payment', downAmtController, number: true),
-                const SizedBox(height: 20),
-                ElevatedButton(
-                  onPressed: () async {
-                    final fSize = int.tryParse(sizeController.text) ?? 0;
-                    final rate = int.tryParse(rateController.text) ?? 0;
-                    final discAmt = int.tryParse(discAmtController.text) ?? 0;
-                    final totalAmt = fSize * rate;
-                    final netAmt = totalAmt - discAmt;
-
-                    final payload = {
-                      'client_id': int.tryParse(clientIdController.text),
-                      'flat_id': int.tryParse(flatIdController.text),
-                      'f_size': fSize,
-                      'rate_psqf': rate,
-                      'disc_amt': discAmt,
-                      'booking_amt': int.tryParse(bookingAmtController.text),
-                      'down_amt': int.tryParse(downAmtController.text),
-                      'total_amt': totalAmt,
-                      'net_amt': netAmt,
-                      'comp_id': compId,
-                    };
-
-                    http.Response response;
-                    if (isEdit) {
-                      response = await http.patch(
-                        Uri.parse(
-                          'http://localhost:5002/api/plat_sale_update/${sale!['id']}',
-                        ),
-                        headers: {
-                          'Authorization': 'Bearer $authToken',
-                          'Content-Type': 'application/json',
-                        },
-                        body: jsonEncode(payload),
-                      );
-                    } else {
-                      response = await http.post(
-                        Uri.parse(
-                          'https://darktechteam.com/realestate/api/create_flat_sale',
-                        ),
-                        headers: {
-                          'Authorization': 'Bearer $authToken',
-                          'Content-Type': 'application/json',
-                        },
-                        body: jsonEncode(payload),
-                      );
-                    }
-
-                    if (response.statusCode == 200 ||
-                        response.statusCode == 201) {
-                      Navigator.pop(context);
-                      await fetchFlatSales();
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        SnackBar(
-                          content: Text(
-                            isEdit
-                                ? 'Updated successfully'
-                                : 'Created successfully',
-                          ),
-                        ),
-                      );
-                    } else {
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        const SnackBar(content: Text('Failed to save sale')),
-                      );
-                    }
-                  },
-                  child: Text(isEdit ? 'UPDATE' : 'SAVE'),
-                ),
-                const SizedBox(height: 20),
-              ],
-            ),
-          ),
-        );
-      },
-    );
-  }
-
-  Widget _formInput(
-    String label,
-    TextEditingController controller, {
-    bool number = false,
-  }) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 8),
-      child: TextFormField(
-        controller: controller,
-        keyboardType: number ? TextInputType.number : TextInputType.text,
-        decoration: InputDecoration(
-          labelText: label,
-          border: const OutlineInputBorder(),
+      context: context,
+      builder: (_) => Padding(
+        padding: EdgeInsets.only(
+          bottom: MediaQuery.of(context).viewInsets.bottom,
         ),
-      ),
-    );
-  }
-
-  Widget _buildSaleCard(Map sale) {
-    return Card(
-      margin: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-      child: ListTile(
-        title: Text(
-          'Flat ID: ${sale['flat_id']} | Client: ${sale['client_id']}',
-        ),
-        subtitle: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text('Net: ${sale['net_amt']} | Total: ${sale['total_amt']}'),
-            Text(
-              'Booking Date: ${sale['booking_date']?.toString().substring(0, 10) ?? ''}',
-            ),
-          ],
-        ),
-        trailing: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            IconButton(
-              icon: const Icon(Icons.edit, color: Colors.blue),
-              onPressed: () => _showAddEditBottomSheet(sale: sale),
-            ),
-            IconButton(
-              icon: const Icon(Icons.delete, color: Colors.red),
-              onPressed: () => deleteFlatSale(sale['id']),
-            ),
-          ],
+        child: FlatSaleForm(
+          token: token!,
+          compId: compId!,
+          clients: clients,
+          projects: projects,
+          flats: flats,
+          initialData: initialData,
+          onSuccess: () async {
+            Navigator.pop(context);
+            await fetchSales();
+          },
         ),
       ),
     );
@@ -299,39 +121,529 @@ class _FlatSalePageState extends State<FlatSalePage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('Flat Sales')),
-      body: isLoading
+      appBar: AppBar(title: const Text("Flat Sales")),
+      body: sales.isEmpty
           ? const Center(child: CircularProgressIndicator())
-          : Column(
-              children: [
-                Padding(
-                  padding: const EdgeInsets.all(10),
-                  child: TextField(
-                    controller: _searchController,
-                    onChanged: _filterSales,
-                    decoration: const InputDecoration(
-                      labelText: 'Search by Flat ID / Client ID',
-                      prefixIcon: Icon(Icons.search),
-                      border: OutlineInputBorder(),
+          : ListView.builder(
+              itemCount: sales.length,
+              itemBuilder: (context, index) {
+                final s = sales[index];
+                return Card(
+                  margin: const EdgeInsets.all(8),
+                  child: ListTile(
+                    title: Text(
+                      "Flat: ${s['flat_id']}, Client: ${s['client_id']}",
+                    ),
+                    subtitle: Text(
+                      "Total: ${s['total_amt']} - Due: ${s['total_due']}",
+                    ),
+                    trailing: IconButton(
+                      icon: const Icon(Icons.edit, color: Colors.orange),
+                      onPressed: () => openForm(initialData: s),
                     ),
                   ),
-                ),
-                Expanded(
-                  child: RefreshIndicator(
-                    onRefresh: fetchFlatSales,
-                    child: ListView.builder(
-                      itemCount: filteredSales.length,
-                      itemBuilder: (context, index) {
-                        return _buildSaleCard(filteredSales[index]);
-                      },
-                    ),
-                  ),
-                ),
-              ],
+                );
+              },
             ),
       floatingActionButton: FloatingActionButton(
-        onPressed: () => _showAddEditBottomSheet(),
+        onPressed: () => openForm(),
         child: const Icon(Icons.add),
+      ),
+    );
+  }
+}
+
+class FlatSaleForm extends StatefulWidget {
+  final String token;
+  final int compId;
+  final List clients, projects, flats;
+  final Map? initialData;
+  final VoidCallback onSuccess;
+
+  const FlatSaleForm({
+    super.key,
+    required this.token,
+    required this.compId,
+    required this.clients,
+    required this.projects,
+    required this.flats,
+    this.initialData,
+    required this.onSuccess,
+  });
+
+  @override
+  State<FlatSaleForm> createState() => _FlatSaleFormState();
+}
+
+class _FlatSaleFormState extends State<FlatSaleForm> {
+  final _formKey = GlobalKey<FormState>();
+
+  int? selectedClient;
+  int? selectedProject;
+  int? selectedFlat;
+  String projectLocation = '';
+  String bookingDate = '';
+  String deliveryDate = '';
+
+  final sizeCtrl = TextEditingController();
+  final rateCtrl = TextEditingController();
+  final garageCtrl = TextEditingController();
+  final utilityCtrl = TextEditingController();
+  final commonCtrl = TextEditingController();
+  final othersCtrl = TextEditingController();
+  final discountCtrl = TextEditingController();
+  final bookingCtrl = TextEditingController();
+  final downCtrl = TextEditingController();
+  final installmentCtrl = TextEditingController();
+  final bookingDateCtrl = TextEditingController();
+  final deliveryDateCtrl = TextEditingController();
+  final projectLocationCtrl = TextEditingController();
+
+  @override
+  void initState() {
+    super.initState();
+    final today = DateTime.now().toIso8601String().split('T')[0];
+    bookingDate = today;
+    deliveryDate = today;
+    bookingDateCtrl.text = today;
+    deliveryDateCtrl.text = today;
+    projectLocationCtrl.text = projectLocation;
+
+    if (widget.initialData != null) {
+      final d = widget.initialData!;
+      selectedClient = d['client_id'];
+      selectedProject = d['project_id'];
+      selectedFlat = d['flat_id'];
+      sizeCtrl.text = d['f_size'].toString();
+      rateCtrl.text = d['rate_psqf'].toString();
+      garageCtrl.text = d['garage_chrg'].toString();
+      utilityCtrl.text = d['utility_chrg'].toString();
+      commonCtrl.text = d['common_chrg'].toString();
+      othersCtrl.text = d['others_chrg'].toString();
+      discountCtrl.text = d['disc_amt'].toString();
+      bookingCtrl.text = d['booking_amt'].toString();
+      downCtrl.text = d['down_amt'].toString();
+      installmentCtrl.text = d['inst_no'].toString();
+      bookingDate = d['booking_date'] ?? today;
+      deliveryDate = d['deliv_date'] ?? today;
+      bookingDateCtrl.text = bookingDate;
+      deliveryDateCtrl.text = deliveryDate;
+      projectLocationCtrl.text =
+          widget.projects.firstWhere(
+            (p) => p['id'] == selectedProject,
+            orElse: () => {'location': ''},
+          )['location'] ??
+          '';
+    }
+  }
+
+  @override
+  void dispose() {
+    sizeCtrl.dispose();
+    rateCtrl.dispose();
+    garageCtrl.dispose();
+    utilityCtrl.dispose();
+    commonCtrl.dispose();
+    othersCtrl.dispose();
+    discountCtrl.dispose();
+    bookingCtrl.dispose();
+    downCtrl.dispose();
+    installmentCtrl.dispose();
+    bookingDateCtrl.dispose();
+    deliveryDateCtrl.dispose();
+    projectLocationCtrl.dispose();
+    super.dispose();
+  }
+
+  Future<void> _pickDate(
+    BuildContext context,
+    TextEditingController ctrl,
+    void Function(String) onPicked,
+  ) async {
+    final initial = DateTime.tryParse(ctrl.text) ?? DateTime.now();
+    final picked = await showDatePicker(
+      context: context,
+      initialDate: initial,
+      firstDate: DateTime(2000),
+      lastDate: DateTime(2100),
+    );
+    if (picked != null) {
+      final formatted = picked.toIso8601String().split('T')[0];
+      ctrl.text = formatted;
+      onPicked(formatted);
+    }
+  }
+
+  int get totalRate {
+    final size = int.tryParse(sizeCtrl.text) ?? 0;
+    final rate = int.tryParse(rateCtrl.text) ?? 0;
+    final garage = int.tryParse(garageCtrl.text) ?? 0;
+    final utility = int.tryParse(utilityCtrl.text) ?? 0;
+    final common = int.tryParse(commonCtrl.text) ?? 0;
+    final others = int.tryParse(othersCtrl.text) ?? 0;
+    return (size * rate) + garage + utility + common + others;
+  }
+
+  int get netPay => totalRate - (int.tryParse(discountCtrl.text) ?? 0);
+  int get totalRecv =>
+      (int.tryParse(bookingCtrl.text) ?? 0) +
+      (int.tryParse(downCtrl.text) ?? 0);
+  int get dueAmt => netPay - totalRecv;
+  double get perInstallment {
+    final inst = int.tryParse(installmentCtrl.text) ?? 0;
+    return inst == 0 ? 0 : dueAmt / inst;
+  }
+
+  Future<void> handleSubmit() async {
+    if (!_formKey.currentState!.validate()) return;
+
+    final payload = {
+      'client_id': selectedClient,
+      'project_id': selectedProject,
+      'flat_id': selectedFlat,
+      'f_size': int.tryParse(sizeCtrl.text) ?? 0,
+      'rate_psqf': int.tryParse(rateCtrl.text) ?? 0,
+      'garage_chrg': int.tryParse(garageCtrl.text) ?? 0,
+      'utility_chrg': int.tryParse(utilityCtrl.text) ?? 0,
+      'common_chrg': int.tryParse(commonCtrl.text) ?? 0,
+      'others_chrg': int.tryParse(othersCtrl.text) ?? 0,
+      'total_amt': totalRate,
+      'disc_amt': int.tryParse(discountCtrl.text) ?? 0,
+      'net_amt': netPay,
+      'booking_amt': int.tryParse(bookingCtrl.text) ?? 0,
+      'down_amt': int.tryParse(downCtrl.text) ?? 0,
+      'booking_date': bookingDate,
+      'deliv_date': deliveryDate,
+      'inst_no': int.tryParse(installmentCtrl.text) ?? 0,
+      'amt_per_inst': perInstallment.toStringAsFixed(0),
+      'total_due': dueAmt,
+      'payment_mode': 1,
+      'ref_by': null,
+      'comp_id': widget.compId,
+    };
+
+    final isUpdate = widget.initialData != null;
+    final url = isUpdate
+        ? "https://darktechteam.com/realestate/api/update_flat_sale/${widget.initialData!['id']}"
+        : "https://darktechteam.com/realestate/api/create_flat_sale";
+
+    final res = await http.post(
+      Uri.parse(url),
+      headers: {
+        'Authorization': 'Bearer ${widget.token}',
+        'Content-Type': 'application/json',
+      },
+      body: jsonEncode(payload),
+    );
+
+    if (res.statusCode == 200 || res.statusCode == 201) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            isUpdate ? "Updated Successfully" : "Created Successfully",
+          ),
+        ),
+      );
+      widget.onSuccess();
+    } else {
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text("Submission failed")));
+    }
+  }
+
+  Widget buildDropdown<T>({
+    required String label,
+    required T? value,
+    required List<DropdownMenuItem<T>> items,
+    required void Function(T?) onChanged,
+    String? Function(T?)? validator,
+  }) {
+    return DropdownButtonFormField<T>(
+      value: value,
+      decoration: InputDecoration(
+        labelText: label,
+        border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
+        filled: true,
+        fillColor: Colors.grey.shade50,
+      ),
+      items: items,
+      onChanged: onChanged,
+      validator: validator,
+    );
+  }
+
+  Widget buildInput(
+    String label,
+    TextEditingController ctrl, {
+    bool readOnly = false,
+  }) {
+    return TextFormField(
+      controller: ctrl,
+      readOnly: readOnly,
+      keyboardType: TextInputType.number,
+      decoration: InputDecoration(
+        labelText: label,
+        border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
+        filled: true,
+        fillColor: Colors.grey.shade50,
+        contentPadding: const EdgeInsets.symmetric(
+          vertical: 14,
+          horizontal: 12,
+        ),
+      ),
+      validator: (val) => val == null || val.isEmpty ? 'Required' : null,
+    );
+  }
+
+  Widget buildDatePicker(
+    String label,
+    TextEditingController ctrl,
+    void Function(String) onPicked,
+  ) {
+    return TextFormField(
+      controller: ctrl,
+      readOnly: true,
+      decoration: InputDecoration(
+        labelText: label,
+        border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
+        filled: true,
+        fillColor: Colors.grey.shade50,
+        suffixIcon: const Icon(Icons.calendar_today_outlined),
+        contentPadding: const EdgeInsets.symmetric(
+          vertical: 14,
+          horizontal: 12,
+        ),
+      ),
+      onTap: () => _pickDate(context, ctrl, onPicked),
+      validator: (val) => val == null || val.isEmpty ? 'Required' : null,
+    );
+  }
+
+  Widget _summaryText(String label, String value) {
+    return Column(
+      children: [
+        Text(
+          label,
+          style: const TextStyle(
+            fontWeight: FontWeight.w600,
+            color: Colors.black54,
+          ),
+        ),
+        const SizedBox(height: 4),
+        Text(
+          value,
+          style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+        ),
+      ],
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final filteredFlats = widget.flats
+        .where((f) => f['project'] == selectedProject)
+        .toList();
+
+    final formFields = [
+      buildDropdown<int>(
+        label: 'Client',
+        value: widget.clients.any((c) => c['id'] == selectedClient)
+            ? selectedClient
+            : null,
+        items: widget.clients
+            .map<DropdownMenuItem<int>>(
+              (c) => DropdownMenuItem<int>(
+                value: c['id'],
+                child: Text("${c['client_id']} - ${c['name']}"),
+              ),
+            )
+            .toList(),
+        onChanged: (val) => setState(() => selectedClient = val),
+        validator: (val) => val == null ? 'Please select a client' : null,
+      ),
+      buildDropdown<int>(
+        label: 'Project',
+        value: widget.projects.any((p) => p['id'] == selectedProject)
+            ? selectedProject
+            : null,
+        items: widget.projects
+            .map<DropdownMenuItem<int>>(
+              (p) => DropdownMenuItem<int>(
+                value: p['id'],
+                child: Text("${p['pro_id']} - ${p['name']}"),
+              ),
+            )
+            .toList(),
+        onChanged: (val) {
+          if (val == null) return;
+          final selected = widget.projects.firstWhere((p) => p['id'] == val);
+          setState(() {
+            selectedProject = val;
+            projectLocation = selected['location'] ?? '';
+            projectLocationCtrl.text = projectLocation;
+            selectedFlat = null;
+          });
+        },
+        validator: (val) => val == null ? 'Please select a project' : null,
+      ),
+      buildDropdown<int>(
+        label: 'Flat',
+        value: filteredFlats.any((f) => f['id'] == selectedFlat)
+            ? selectedFlat
+            : null,
+        items: filteredFlats
+            .map<DropdownMenuItem<int>>(
+              (f) => DropdownMenuItem<int>(
+                value: f['id'],
+                child: Text(f['flat_id']),
+              ),
+            )
+            .toList(),
+        onChanged: (val) => setState(() => selectedFlat = val),
+        validator: (val) => val == null ? 'Please select a flat' : null,
+      ),
+      buildInput("Size (sq ft)", sizeCtrl),
+      buildInput("Rate (per sq ft)", rateCtrl),
+      buildInput("Garage Charge", garageCtrl),
+      buildInput("Utility Charge", utilityCtrl),
+      buildInput("Common Charge", commonCtrl),
+      buildInput("Other Charges", othersCtrl),
+      buildInput("Discount", discountCtrl),
+      buildInput("Booking Amount", bookingCtrl),
+      buildInput("Down Payment", downCtrl),
+      buildInput("Installments", installmentCtrl),
+      buildDatePicker(
+        "Booking Date",
+        bookingDateCtrl,
+        (val) => bookingDate = val,
+      ),
+      buildDatePicker(
+        "Delivery Date",
+        deliveryDateCtrl,
+        (val) => deliveryDate = val,
+      ),
+    ];
+
+    return Padding(
+      padding: const EdgeInsets.all(20),
+      child: Form(
+        key: _formKey,
+        child: Column(
+          children: [
+            Expanded(
+              child: SingleChildScrollView(
+                child: LayoutBuilder(
+                  builder: (context, constraints) {
+                    final spacing = 16.0;
+                    return GridView.builder(
+                      physics: const NeverScrollableScrollPhysics(),
+                      shrinkWrap: true,
+                      gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+                        crossAxisCount: 2,
+                        crossAxisSpacing: spacing,
+                        mainAxisSpacing: spacing,
+                        childAspectRatio: 3.5,
+                      ),
+                      itemCount: formFields.length,
+                      itemBuilder: (context, index) {
+                        return formFields[index];
+                      },
+                    );
+                  },
+                ),
+              ),
+            ),
+            const SizedBox(height: 20),
+            Card(
+              elevation: 3,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(12),
+              ),
+              color: Colors.blue.shade50,
+              child: Padding(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 20,
+                  vertical: 16,
+                ),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Flexible(
+                      child: TextFormField(
+                        controller: projectLocationCtrl,
+                        readOnly: true,
+                        decoration: InputDecoration(
+                          labelText: "Project Location",
+                          border: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                          filled: true,
+                          fillColor: Colors.grey.shade100,
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+                    _summaryText("Total", totalRate.toString()),
+                    _summaryText("Net", netPay.toString()),
+                    _summaryText("Due", dueAmt.toString()),
+                    _summaryText("Per Inst", perInstallment.toStringAsFixed(0)),
+                  ],
+                ),
+              ),
+            ),
+            const SizedBox(height: 24),
+
+            // <-- Updated Buttons Row -->
+            SizedBox(
+              width: double.infinity,
+              child: Row(
+                children: [
+                  Expanded(
+                    child: OutlinedButton(
+                      onPressed: () {
+                        Navigator.pop(context); // Close bottom sheet
+                      },
+                      style: OutlinedButton.styleFrom(
+                        padding: const EdgeInsets.symmetric(vertical: 16),
+                        side: const BorderSide(color: Colors.grey),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(10),
+                        ),
+                      ),
+                      child: const Text(
+                        "Cancel",
+                        style: TextStyle(fontSize: 18),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 16),
+                  Expanded(
+                    child: ElevatedButton(
+                      onPressed: handleSubmit,
+                      style: ElevatedButton.styleFrom(
+                        padding: const EdgeInsets.symmetric(vertical: 16),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(10),
+                        ),
+                        elevation: 5,
+                      ),
+                      child: Text(
+                        widget.initialData != null
+                            ? "Update Sale"
+                            : "Submit Sale",
+                        style: const TextStyle(
+                          fontSize: 18,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }
