@@ -445,86 +445,6 @@ class _FlatSaleFormState extends State<FlatSaleForm> {
         .where((f) => f['project'] == selectedProject)
         .toList();
 
-    final formFields = [
-      buildDropdown<int>(
-        label: 'Client',
-        value: widget.clients.any((c) => c['id'] == selectedClient)
-            ? selectedClient
-            : null,
-        items: widget.clients
-            .map<DropdownMenuItem<int>>(
-              (c) => DropdownMenuItem<int>(
-                value: c['id'],
-                child: Text("${c['client_id']} - ${c['name']}"),
-              ),
-            )
-            .toList(),
-        onChanged: (val) => setState(() => selectedClient = val),
-        validator: (val) => val == null ? 'Please select a client' : null,
-      ),
-      buildDropdown<int>(
-        label: 'Project',
-        value: widget.projects.any((p) => p['id'] == selectedProject)
-            ? selectedProject
-            : null,
-        items: widget.projects
-            .map<DropdownMenuItem<int>>(
-              (p) => DropdownMenuItem<int>(
-                value: p['id'],
-                child: Text("${p['pro_id']} - ${p['name']}"),
-              ),
-            )
-            .toList(),
-        onChanged: (val) {
-          if (val == null) return;
-          final selected = widget.projects.firstWhere((p) => p['id'] == val);
-          setState(() {
-            selectedProject = val;
-            projectLocation = selected['location'] ?? '';
-            projectLocationCtrl.text = projectLocation;
-            selectedFlat = null;
-          });
-        },
-        validator: (val) => val == null ? 'Please select a project' : null,
-      ),
-      buildDropdown<int>(
-        label: 'Flat',
-        value: filteredFlats.any((f) => f['id'] == selectedFlat)
-            ? selectedFlat
-            : null,
-        items: filteredFlats
-            .map<DropdownMenuItem<int>>(
-              (f) => DropdownMenuItem<int>(
-                value: f['id'],
-                child: Text(f['flat_id']),
-              ),
-            )
-            .toList(),
-        onChanged: (val) => setState(() => selectedFlat = val),
-        validator: (val) => val == null ? 'Please select a flat' : null,
-      ),
-      buildInput("Size (sq ft)", sizeCtrl),
-      buildInput("Rate (per sq ft)", rateCtrl),
-      buildInput("Garage Charge", garageCtrl),
-      buildInput("Utility Charge", utilityCtrl),
-      buildInput("Common Charge", commonCtrl),
-      buildInput("Other Charges", othersCtrl),
-      buildInput("Discount", discountCtrl),
-      buildInput("Booking Amount", bookingCtrl),
-      buildInput("Down Payment", downCtrl),
-      buildInput("Installments", installmentCtrl),
-      buildDatePicker(
-        "Booking Date",
-        bookingDateCtrl,
-        (val) => bookingDate = val,
-      ),
-      buildDatePicker(
-        "Delivery Date",
-        deliveryDateCtrl,
-        (val) => deliveryDate = val,
-      ),
-    ];
-
     return Padding(
       padding: const EdgeInsets.all(20),
       child: Form(
@@ -533,114 +453,205 @@ class _FlatSaleFormState extends State<FlatSaleForm> {
           children: [
             Expanded(
               child: SingleChildScrollView(
-                child: LayoutBuilder(
-                  builder: (context, constraints) {
-                    final spacing = 16.0;
-                    return GridView.builder(
-                      physics: const NeverScrollableScrollPhysics(),
-                      shrinkWrap: true,
-                      gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-                        crossAxisCount: 2,
-                        crossAxisSpacing: spacing,
-                        mainAxisSpacing: spacing,
-                        childAspectRatio: 3.5,
-                      ),
-                      itemCount: formFields.length,
-                      itemBuilder: (context, index) {
-                        return formFields[index];
-                      },
-                    );
-                  },
-                ),
-              ),
-            ),
-            const SizedBox(height: 20),
-            Card(
-              elevation: 3,
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(12),
-              ),
-              color: Colors.blue.shade50,
-              child: Padding(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 20,
-                  vertical: 16,
-                ),
-                child: Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
-                    Flexible(
-                      child: TextFormField(
-                        controller: projectLocationCtrl,
-                        readOnly: true,
-                        decoration: InputDecoration(
-                          labelText: "Project Location",
-                          border: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(8),
-                          ),
-                          filled: true,
-                          fillColor: Colors.grey.shade100,
+                    // 1-column fields
+                    buildDropdown<int>(
+                      label: 'Client',
+                      value:
+                          widget.clients.any((c) => c['id'] == selectedClient)
+                          ? selectedClient
+                          : null,
+                      items: widget.clients
+                          .map<DropdownMenuItem<int>>(
+                            (c) => DropdownMenuItem<int>(
+                              value: c['id'],
+                              child: Text("${c['client_id']} - ${c['name']}"),
+                            ),
+                          )
+                          .toList(),
+                      onChanged: (val) => setState(() => selectedClient = val),
+                      validator: (val) =>
+                          val == null ? 'Please select a client' : null,
+                    ),
+                    const SizedBox(height: 16),
+
+                    buildDropdown<int>(
+                      label: 'Project',
+                      value:
+                          widget.projects.any((p) => p['id'] == selectedProject)
+                          ? selectedProject
+                          : null,
+                      items: widget.projects
+                          .map<DropdownMenuItem<int>>(
+                            (p) => DropdownMenuItem<int>(
+                              value: p['id'],
+                              child: Text("${p['pro_id']} - ${p['name']}"),
+                            ),
+                          )
+                          .toList(),
+                      onChanged: (val) {
+                        if (val == null) return;
+                        final selected = widget.projects.firstWhere(
+                          (p) => p['id'] == val,
+                        );
+                        setState(() {
+                          selectedProject = val;
+                          projectLocation = selected['location'] ?? '';
+                          projectLocationCtrl.text = projectLocation;
+                          selectedFlat = null;
+                        });
+                      },
+                      validator: (val) =>
+                          val == null ? 'Please select a project' : null,
+                    ),
+                    const SizedBox(height: 16),
+
+                    // Project Location - read only
+                    TextFormField(
+                      controller: projectLocationCtrl,
+                      readOnly: true,
+                      decoration: InputDecoration(
+                        labelText: "Project Location",
+                        border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                        filled: true,
+                        fillColor: Colors.grey.shade100,
+                        contentPadding: const EdgeInsets.symmetric(
+                          vertical: 14,
+                          horizontal: 12,
                         ),
                       ),
                     ),
-                    const SizedBox(width: 12),
-                    _summaryText("Total", totalRate.toString()),
-                    _summaryText("Net", netPay.toString()),
-                    _summaryText("Due", dueAmt.toString()),
-                    _summaryText("Per Inst", perInstallment.toStringAsFixed(0)),
+                    const SizedBox(height: 16),
+
+                    buildDropdown<int>(
+                      label: 'Flat',
+                      value: filteredFlats.any((f) => f['id'] == selectedFlat)
+                          ? selectedFlat
+                          : null,
+                      items: filteredFlats
+                          .map<DropdownMenuItem<int>>(
+                            (f) => DropdownMenuItem<int>(
+                              value: f['id'],
+                              child: Text(f['flat_id']),
+                            ),
+                          )
+                          .toList(),
+                      onChanged: (val) => setState(() => selectedFlat = val),
+                      validator: (val) =>
+                          val == null ? 'Please select a flat' : null,
+                    ),
+                    const SizedBox(height: 16),
+
+                    // 2-column layout rows
+                    Wrap(
+                      spacing: 16,
+                      runSpacing: 16,
+                      children: [
+                        SizedBox(
+                          width: MediaQuery.of(context).size.width / 2 - 28,
+                          child: buildInput("Size (sq ft)", sizeCtrl),
+                        ),
+                        SizedBox(
+                          width: MediaQuery.of(context).size.width / 2 - 28,
+                          child: buildInput("Rate (per sq ft)", rateCtrl),
+                        ),
+                        SizedBox(
+                          width: MediaQuery.of(context).size.width / 2 - 28,
+                          child: buildInput("Garage Charge", garageCtrl),
+                        ),
+                        SizedBox(
+                          width: MediaQuery.of(context).size.width / 2 - 28,
+                          child: buildInput("Utility Charge", utilityCtrl),
+                        ),
+                        SizedBox(
+                          width: MediaQuery.of(context).size.width / 2 - 28,
+                          child: buildInput("Common Charge", commonCtrl),
+                        ),
+                        SizedBox(
+                          width: MediaQuery.of(context).size.width / 2 - 28,
+                          child: buildInput("Other Charges", othersCtrl),
+                        ),
+                        SizedBox(
+                          width: MediaQuery.of(context).size.width / 2 - 28,
+                          child: buildInput("Discount", discountCtrl),
+                        ),
+                        SizedBox(
+                          width: MediaQuery.of(context).size.width / 2 - 28,
+                          child: buildInput("Booking Amount", bookingCtrl),
+                        ),
+                        SizedBox(
+                          width: MediaQuery.of(context).size.width / 2 - 28,
+                          child: buildInput("Down Payment", downCtrl),
+                        ),
+                        SizedBox(
+                          width: MediaQuery.of(context).size.width / 2 - 28,
+                          child: buildInput("Installments", installmentCtrl),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 16),
+
+                    buildDatePicker(
+                      "Booking Date",
+                      bookingDateCtrl,
+                      (val) => bookingDate = val,
+                    ),
+                    const SizedBox(height: 16),
+
+                    buildDatePicker(
+                      "Delivery Date",
+                      deliveryDateCtrl,
+                      (val) => deliveryDate = val,
+                    ),
                   ],
                 ),
               ),
             ),
             const SizedBox(height: 24),
-
-            // <-- Updated Buttons Row -->
-            SizedBox(
-              width: double.infinity,
-              child: Row(
-                children: [
-                  Expanded(
-                    child: OutlinedButton(
-                      onPressed: () {
-                        Navigator.pop(context); // Close bottom sheet
-                      },
-                      style: OutlinedButton.styleFrom(
-                        padding: const EdgeInsets.symmetric(vertical: 16),
-                        side: const BorderSide(color: Colors.grey),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(10),
-                        ),
+            Row(
+              children: [
+                Expanded(
+                  child: OutlinedButton(
+                    onPressed: () {
+                      Navigator.pop(context);
+                    },
+                    style: OutlinedButton.styleFrom(
+                      padding: const EdgeInsets.symmetric(vertical: 16),
+                      side: const BorderSide(color: Colors.grey),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(10),
                       ),
-                      child: const Text(
-                        "Cancel",
-                        style: TextStyle(fontSize: 18),
+                    ),
+                    child: const Text("Cancel", style: TextStyle(fontSize: 18)),
+                  ),
+                ),
+                const SizedBox(width: 16),
+                Expanded(
+                  child: ElevatedButton(
+                    onPressed: handleSubmit,
+                    style: ElevatedButton.styleFrom(
+                      padding: const EdgeInsets.symmetric(vertical: 16),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(10),
+                      ),
+                      elevation: 5,
+                    ),
+                    child: Text(
+                      widget.initialData != null
+                          ? "Update Sale"
+                          : "Submit Sale",
+                      style: const TextStyle(
+                        fontSize: 18,
+                        fontWeight: FontWeight.bold,
                       ),
                     ),
                   ),
-                  const SizedBox(width: 16),
-                  Expanded(
-                    child: ElevatedButton(
-                      onPressed: handleSubmit,
-                      style: ElevatedButton.styleFrom(
-                        padding: const EdgeInsets.symmetric(vertical: 16),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(10),
-                        ),
-                        elevation: 5,
-                      ),
-                      child: Text(
-                        widget.initialData != null
-                            ? "Update Sale"
-                            : "Submit Sale",
-                        style: const TextStyle(
-                          fontSize: 18,
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
-                    ),
-                  ),
-                ],
-              ),
+                ),
+              ],
             ),
           ],
         ),
