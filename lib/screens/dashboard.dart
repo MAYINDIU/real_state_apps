@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:realestate/screens/clients.dart';
+import 'package:realestate/screens/collection_entry.dart';
 import 'package:realestate/screens/flat_sale.dart';
 import 'package:realestate/screens/flatplot.dart';
 import 'package:realestate/screens/login.dart';
@@ -212,11 +213,15 @@ class _DashboardPageState extends State<DashboardPage> {
                       MaterialPageRoute(builder: (_) => const FlatPlotPage()),
                     );
                   }),
-                  _buildCard(
-                    "Collection",
-                    "assets/icons/collection.png",
-                    () {},
-                  ),
+                  _buildCard("Collection", "assets/icons/collection.png", () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (_) => const CollectionEntryPage(),
+                      ),
+                    );
+                  }),
+
                   _buildCard(
                     "Expense Entry",
                     "assets/icons/expense.png",

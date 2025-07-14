@@ -18,6 +18,9 @@ class _FlatSalePageState extends State<FlatSalePage> {
   List projects = [];
   List flats = [];
   List sales = [];
+  List filteredSales = [];
+
+  TextEditingController searchController = TextEditingController();
 
   @override
   void initState() {
@@ -88,9 +91,94 @@ class _FlatSalePageState extends State<FlatSalePage> {
       headers: {'Authorization': 'Bearer $token'},
     );
     if (res.statusCode == 200) {
+      final List rawSales = jsonDecode(res.body)['data'];
+
+      List enriched = rawSales.map((s) {
+        final client = clients.firstWhere(
+          (c) => c['id'] == s['client_id'],
+          orElse: () => {},
+        );
+        final project = projects.firstWhere(
+          (p) => p['id'] == s['project_id'],
+          orElse: () => {},
+        );
+
+        return {
+          ...s,
+          'cId': client['client_id'] ?? '',
+          'cName': client['name'] ?? '',
+          'cMobile': client['mobile'] ?? '',
+          'pId': project['pro_id'] ?? '',
+          'pName': project['name'] ?? '',
+          'pLoc': project['location'] ?? '',
+        };
+      }).toList();
+
       setState(() {
-        sales = jsonDecode(res.body)['data'];
+        sales = enriched;
+        filteredSales = enriched;
       });
+    }
+  }
+
+  void filterSearch(String query) {
+    final filtered = sales.where((item) {
+      final name = item['cName'].toLowerCase();
+      final mobile = item['cMobile'].toLowerCase();
+      final project = item['pName'].toLowerCase();
+      return name.contains(query.toLowerCase()) ||
+          mobile.contains(query.toLowerCase()) ||
+          project.contains(query.toLowerCase());
+    }).toList();
+
+    setState(() {
+      filteredSales = filtered;
+    });
+  }
+
+  void confirmDelete(int id) async {
+    final confirm = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Confirm Delete'),
+        content: const Text('Are you sure you want to delete this sale?'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: const Text('Cancel'),
+          ),
+          ElevatedButton(
+            onPressed: () => Navigator.pop(ctx, true),
+            style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
+            child: const Text('Delete'),
+          ),
+        ],
+      ),
+    );
+
+    if (confirm == true) {
+      await deleteSale(id);
+    }
+  }
+
+  Future<void> deleteSale(int id) async {
+    final url = Uri.parse(
+      "https://darktechteam.com/realestate/api/plat_sale_delete/$id",
+    );
+    final res = await http.delete(
+      url,
+      headers: {'Authorization': 'Bearer $token'},
+    );
+
+    if (res.statusCode == 200) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Sale deleted successfully')),
+      );
+      await fetchSales(); // Refresh list
+    } else {
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('Failed to delete sale')));
     }
   }
 
@@ -121,32 +209,146 @@ class _FlatSalePageState extends State<FlatSalePage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text("Flat Sales")),
-      body: sales.isEmpty
-          ? const Center(child: CircularProgressIndicator())
-          : ListView.builder(
-              itemCount: sales.length,
-              itemBuilder: (context, index) {
-                final s = sales[index];
-                return Card(
-                  margin: const EdgeInsets.all(8),
-                  child: ListTile(
-                    title: Text(
-                      "Flat: ${s['flat_id']}, Client: ${s['client_id']}",
-                    ),
-                    subtitle: Text(
-                      "Total: ${s['total_amt']} - Due: ${s['total_due']}",
-                    ),
-                    trailing: IconButton(
-                      icon: const Icon(Icons.edit, color: Colors.orange),
-                      onPressed: () => openForm(initialData: s),
-                    ),
-                  ),
-                );
-              },
+      appBar: AppBar(
+        title: const Text("Flat Sales"),
+        backgroundColor: Colors.teal,
+        elevation: 4,
+      ),
+      body: Column(
+        children: [
+          Padding(
+            padding: const EdgeInsets.all(8),
+            child: TextField(
+              controller: searchController,
+              onChanged: filterSearch,
+              decoration: InputDecoration(
+                labelText: 'Search by Name, Mobile, or Project',
+                prefixIcon: const Icon(Icons.search),
+                filled: true,
+                fillColor: Colors.teal.shade50,
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(12),
+                ),
+              ),
             ),
+          ),
+          Expanded(
+            child: filteredSales.isEmpty
+                ? const Center(child: CircularProgressIndicator())
+                : ListView.builder(
+                    itemCount: filteredSales.length,
+                    itemBuilder: (context, index) {
+                      final s = filteredSales[index];
+                      return Card(
+                        margin: const EdgeInsets.symmetric(
+                          horizontal: 12,
+                          vertical: 6,
+                        ),
+
+                        child: ListTile(
+                          contentPadding: const EdgeInsets.all(12),
+
+                          title: Text(
+                            '${s['cName']} (${s['cId']})',
+                            style: const TextStyle(
+                              fontWeight: FontWeight.bold,
+                              fontSize: 16,
+                            ),
+                          ),
+                          subtitle: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              const SizedBox(height: 4),
+                              Row(
+                                children: [
+                                  const Icon(
+                                    Icons.phone,
+                                    size: 16,
+                                    color: Colors.grey,
+                                  ),
+                                  const SizedBox(width: 6),
+                                  Text(s['cMobile']),
+                                ],
+                              ),
+                              const SizedBox(height: 4),
+                              Row(
+                                children: [
+                                  const Icon(
+                                    Icons.business,
+                                    size: 16,
+                                    color: Colors.grey,
+                                  ),
+                                  const SizedBox(width: 6),
+                                  Expanded(
+                                    child: Text('${s['pName']} (${s['pId']})'),
+                                  ),
+                                ],
+                              ),
+                              const SizedBox(height: 4),
+                              Row(
+                                children: [
+                                  const Icon(
+                                    Icons.location_on,
+                                    size: 16,
+                                    color: Colors.grey,
+                                  ),
+                                  const SizedBox(width: 6),
+                                  Expanded(child: Text(s['pLoc'])),
+                                ],
+                              ),
+                              const SizedBox(height: 4),
+                              Row(
+                                children: [
+                                  const Icon(
+                                    Icons.attach_money,
+                                    size: 16,
+                                    color: Colors.grey,
+                                  ),
+                                  const SizedBox(width: 6),
+                                  Text('Total: ${s['total_amt']}'),
+                                  const SizedBox(width: 12),
+                                  const Icon(
+                                    Icons.money_off,
+                                    size: 16,
+                                    color: Colors.red,
+                                  ),
+                                  const SizedBox(width: 6),
+                                  Text('Due: ${s['total_due']}'),
+                                ],
+                              ),
+                            ],
+                          ),
+                          trailing: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              IconButton(
+                                icon: const Icon(
+                                  Icons.edit_note_rounded,
+                                  color: Colors.teal,
+                                ),
+                                tooltip: "Edit Sale",
+                                onPressed: () => openForm(initialData: s),
+                              ),
+                              IconButton(
+                                icon: const Icon(
+                                  Icons.delete_forever,
+                                  color: Colors.redAccent,
+                                ),
+                                tooltip: "Delete Sale",
+                                onPressed: () => confirmDelete(s['id']),
+                              ),
+                            ],
+                          ),
+                        ),
+                      );
+                    },
+                  ),
+          ),
+        ],
+      ),
       floatingActionButton: FloatingActionButton(
         onPressed: () => openForm(),
+        backgroundColor: Colors.teal,
         child: const Icon(Icons.add),
       ),
     );
@@ -324,31 +526,45 @@ class _FlatSaleFormState extends State<FlatSaleForm> {
 
     final isUpdate = widget.initialData != null;
     final url = isUpdate
-        ? "https://darktechteam.com/realestate/api/update_flat_sale/${widget.initialData!['id']}"
+        ? "https://darktechteam.com/realestate/api/plat_sale_update/${widget.initialData!['id']}" // ✅ Fixed typo here
         : "https://darktechteam.com/realestate/api/create_flat_sale";
 
-    final res = await http.post(
-      Uri.parse(url),
-      headers: {
-        'Authorization': 'Bearer ${widget.token}',
-        'Content-Type': 'application/json',
-      },
-      body: jsonEncode(payload),
-    );
+    try {
+      final res = await http.post(
+        Uri.parse(url),
+        headers: {
+          'Authorization': 'Bearer ${widget.token}',
+          'Content-Type': 'application/json',
+        },
+        body: jsonEncode(payload),
+      );
 
-    if (res.statusCode == 200 || res.statusCode == 201) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(
-            isUpdate ? "Updated Successfully" : "Created Successfully",
+      print('🔹 URL: $url');
+      print('🔹 Payload: ${jsonEncode(payload)}');
+      print('🔹 Status Code: ${res.statusCode}');
+      print('🔹 Response Body: ${res.body}');
+
+      if (res.statusCode == 200 || res.statusCode == 201) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              isUpdate ? "✅ Updated Successfully" : "✅ Created Successfully",
+            ),
           ),
+        );
+        widget.onSuccess();
+      } else {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text("❌ Submission failed: ${res.body}")),
+        );
+      }
+    } catch (e) {
+      print("❌ Error during submit: $e");
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text("Something went wrong. Please try again."),
         ),
       );
-      widget.onSuccess();
-    } else {
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(const SnackBar(content: Text("Submission failed")));
     }
   }
 
