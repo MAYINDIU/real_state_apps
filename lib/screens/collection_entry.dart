@@ -13,18 +13,17 @@ class CollectionEntryPage extends StatefulWidget {
 class _CollectionEntryPageState extends State<CollectionEntryPage> {
   int? selectedClient;
   int payType = 1;
-  int maxInstNo = 5;
+  int maxInstNo = 1;
   String instDate = DateTime.now().toIso8601String().split("T")[0];
   String mrDate = DateTime.now().toIso8601String().split("T")[0];
   String amount = "";
   String mrInputValue = "";
   bool loading = false;
-
   bool isLoading = true;
+
   List<Map<String, dynamic>> clients = [];
   List<Map<String, dynamic>> flats = [];
   List<Map<String, dynamic>> allCollections = [];
-
   Map<String, dynamic> findFlat = {};
   List<Map<String, dynamic>> collections = [];
 
@@ -110,7 +109,62 @@ class _CollectionEntryPageState extends State<CollectionEntryPage> {
       collections = allCollections
           .where((c) => c['client_id'] == clientId)
           .toList();
+      final maxInst = collections
+          .map((c) => c['inst_no'] ?? 0)
+          .fold<int>(0, (a, b) => a > b ? a : b);
+      maxInstNo = maxInst + 1;
     });
+  }
+
+  Future<bool> submitCollection(Map<String, dynamic> data) async {
+    final url = Uri.parse(
+      'https://darktechteam.com/realestate/api/create_collection',
+    );
+
+    try {
+      final res = await http.post(
+        url,
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': 'Bearer $authToken',
+        },
+        body: jsonEncode(data),
+      );
+
+      if (res.statusCode == 200 || res.statusCode == 201) {
+        final responseBody = jsonDecode(res.body);
+        if (responseBody.containsKey('id')) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text(
+                responseBody['message'] ?? 'Collection added successfully!',
+              ),
+              backgroundColor: Colors.green,
+            ),
+          );
+          return true;
+        } else {
+          final errorMsg = responseBody['message'] ?? "Unknown error";
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text(errorMsg), backgroundColor: Colors.red),
+          );
+          return false;
+        }
+      } else {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Server error: ${res.statusCode}'),
+            backgroundColor: Colors.red,
+          ),
+        );
+        return false;
+      }
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Error: $e'), backgroundColor: Colors.red),
+      );
+      return false;
+    }
   }
 
   Future<void> handleSubmit() async {
@@ -148,116 +202,187 @@ class _CollectionEntryPageState extends State<CollectionEntryPage> {
 
     final payload = {
       "client_id": selectedClient,
-      "p_id": findFlat['p_id'],
-      "f_id": findFlat['f_id'],
+      "p_id": findFlat['pId'],
+      "f_id": findFlat['fId'],
       "inst_no": payType == 1 ? maxInstNo : 0,
       "inst_date": instDate,
       "p_type": payType,
       "mr_no": maxMrNo,
       "mr_date": mrDate,
       "mr_amt": int.parse(amount),
+      "comp_id": compId,
     };
 
-    // API submission logic here
-    await Future.delayed(const Duration(seconds: 1)); // Simulated
+    final success = await submitCollection(payload);
 
-    setState(() {
-      collections.add(payload);
-      amount = "";
-      mrInputValue = "";
-      loading = false;
-    });
+    setState(() => loading = false);
 
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text("Collection added successfully!")),
-    );
+    if (success) {
+      setState(() {
+        collections.add(payload);
+        amount = "";
+        mrInputValue = "";
+        payType = 1;
+        instDate = DateTime.now().toIso8601String().split("T")[0];
+        mrDate = DateTime.now().toIso8601String().split("T")[0];
+      });
+
+      Future.delayed(const Duration(milliseconds: 600), () {
+        Navigator.pop(context); // 👈 Navigate back
+      });
+    }
   }
 
   @override
   Widget build(BuildContext context) {
+    final projectController = TextEditingController(
+      text: "${findFlat['pId'] ?? ''} - ${findFlat['pName'] ?? ''}",
+    );
+    final flatController = TextEditingController(
+      text: "${findFlat['fId'] ?? ''} - ${findFlat['fLoc'] ?? ''}",
+    );
+    final dueController = TextEditingController(text: remainingDue.toString());
+    final installmentController = TextEditingController(
+      text: "${findFlat['amt_per_inst'] ?? ''}",
+    );
+    final paymentModeController = TextEditingController(
+      text: "${findFlat['payMode'] ?? ''}",
+    );
+
     return Scaffold(
-      appBar: AppBar(title: const Text("Collection Entry")),
+      appBar: AppBar(
+        title: const Text("Collection Entry"),
+        backgroundColor: Colors.teal[700],
+      ),
       body: isLoading
           ? const Center(child: CircularProgressIndicator())
           : SingleChildScrollView(
-              padding: const EdgeInsets.all(16),
+              padding: const EdgeInsets.all(12),
               child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
-                  DropdownButtonFormField<int>(
-                    value: selectedClient,
-                    items: clients.map<DropdownMenuItem<int>>((c) {
-                      return DropdownMenuItem<int>(
-                        value: c['id'] as int,
-                        child: Text(
-                          "${c['client_id']} - ${c['name']} (${c['mobile']})",
-                        ),
-                      );
-                    }).toList(),
-                    onChanged: updateClientDetails,
-                    decoration: const InputDecoration(
-                      labelText: "Select Client",
-                      border: OutlineInputBorder(),
+                  _buildClientDropdown(),
+                  if (findFlat.isNotEmpty)
+                    _buildForm(
+                      projectController,
+                      flatController,
+                      dueController,
+                      installmentController,
+                      paymentModeController,
                     ),
-                  ),
-                  const SizedBox(height: 16),
-
-                  if (findFlat.isNotEmpty) ...[
-                    _readOnlyField(
-                      "Project",
-                      "${findFlat['pId']} - ${findFlat['pName']}",
-                    ),
-                    _readOnlyField(
-                      "Flat",
-                      "${findFlat['fId']} - ${findFlat['fLoc']}",
-                    ),
-                    _readOnlyField("Due", "$remainingDue"),
-                    _readOnlyField(
-                      "Installment",
-                      "${findFlat['amt_per_inst']}",
-                    ),
-                    _readOnlyField("Payment Mode", "${findFlat['payMode']}"),
-                    DropdownButtonFormField<int>(
-                      decoration: const InputDecoration(
-                        labelText: "Payment Type",
-                        border: OutlineInputBorder(),
-                      ),
-                      value: payType,
-                      items: const [
-                        DropdownMenuItem(value: 1, child: Text("Installment")),
-                        DropdownMenuItem(
-                          value: 2,
-                          child: Text("Booking Money"),
-                        ),
-                        DropdownMenuItem(value: 3, child: Text("Down Payment")),
-                      ],
-                      onChanged: (val) => setState(() => payType = val ?? 1),
-                    ),
-                    const SizedBox(height: 16),
-
-                    if (payType == 1)
-                      _readOnlyField("Installment No", "$maxInstNo"),
-
-                    _textField(
-                      "Installment Date",
-                      instDate,
-                      (val) => instDate = val,
-                    ),
-                    _readOnlyField("MR No", maxMrNo),
-                    _textField(
-                      "MR Amount",
-                      amount,
-                      (val) => amount = val,
-                      type: TextInputType.number,
-                    ),
-                    const SizedBox(height: 16),
-                    ElevatedButton(
-                      onPressed: loading ? null : handleSubmit,
-                      child: Text(loading ? "Saving..." : "Submit"),
-                    ),
-                  ],
                 ],
               ),
             ),
+    );
+  }
+
+  Widget _buildClientDropdown() {
+    return Card(
+      elevation: 5,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+      margin: const EdgeInsets.only(bottom: 20),
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: DropdownButtonFormField<int>(
+          value: selectedClient,
+          items: clients
+              .map<DropdownMenuItem<int>>(
+                (c) => DropdownMenuItem<int>(
+                  value: c['id'] as int,
+                  child: Text(
+                    "${c['client_id']} - ${c['name']} - ${c['mobile']}",
+                  ),
+                ),
+              )
+              .toList(),
+          onChanged: updateClientDetails,
+          decoration: InputDecoration(
+            labelText: "Select Client",
+            border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
+            filled: true,
+            fillColor: Colors.grey.shade100,
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildForm(
+    TextEditingController projectController,
+    TextEditingController flatController,
+    TextEditingController dueController,
+    TextEditingController installmentController,
+    TextEditingController paymentModeController,
+  ) {
+    return Card(
+      elevation: 5,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          children: [
+            _readOnlyFieldWithController("Project", projectController),
+            _readOnlyFieldWithController("Flat", flatController),
+            _readOnlyFieldWithController("Due", dueController),
+            _readOnlyFieldWithController("Installment", installmentController),
+            _readOnlyFieldWithController("Payment Mode", paymentModeController),
+            DropdownButtonFormField<int>(
+              value: payType,
+              decoration: InputDecoration(
+                labelText: "Payment Type",
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                filled: true,
+                fillColor: Colors.grey.shade100,
+              ),
+              items: const [
+                DropdownMenuItem(value: 1, child: Text("Installment")),
+                DropdownMenuItem(value: 2, child: Text("Booking Money")),
+                DropdownMenuItem(value: 3, child: Text("Down Payment")),
+              ],
+              onChanged: (val) => setState(() => payType = val ?? 1),
+            ),
+            const SizedBox(height: 16),
+            if (payType == 1) _readOnlyField("Inst. No", "$maxInstNo"),
+            _textField(
+              "Inst. Date",
+              instDate,
+              (val) => setState(() => instDate = val),
+            ),
+            _readOnlyField("MR No", maxMrNo),
+            _textField(
+              "MR Amount",
+              amount,
+              (val) => setState(() => amount = val),
+              type: TextInputType.number,
+            ),
+            const SizedBox(height: 20),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+              children: [
+                ElevatedButton(
+                  onPressed: loading ? null : handleSubmit,
+                  child: Text(loading ? "Saving..." : "Submit"),
+                ),
+                ElevatedButton(
+                  onPressed: () {
+                    setState(() {
+                      amount = "";
+                      mrInputValue = "";
+                      payType = 1;
+                      instDate = DateTime.now().toIso8601String().split("T")[0];
+                      mrDate = DateTime.now().toIso8601String().split("T")[0];
+                    });
+                  },
+                  style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
+                  child: const Text("Cancel"),
+                ),
+              ],
+            ),
+          ],
+        ),
+      ),
     );
   }
 
@@ -267,10 +392,31 @@ class _CollectionEntryPageState extends State<CollectionEntryPage> {
       child: TextFormField(
         decoration: InputDecoration(
           labelText: label,
-          border: const OutlineInputBorder(),
+          border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
+          filled: true,
+          fillColor: Colors.grey.shade100,
         ),
         readOnly: true,
         initialValue: value,
+      ),
+    );
+  }
+
+  Widget _readOnlyFieldWithController(
+    String label,
+    TextEditingController controller,
+  ) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 16),
+      child: TextFormField(
+        controller: controller,
+        readOnly: true,
+        decoration: InputDecoration(
+          labelText: label,
+          border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
+          filled: true,
+          fillColor: Colors.grey.shade100,
+        ),
       ),
     );
   }
@@ -286,7 +432,9 @@ class _CollectionEntryPageState extends State<CollectionEntryPage> {
       child: TextFormField(
         decoration: InputDecoration(
           labelText: label,
-          border: const OutlineInputBorder(),
+          border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
+          filled: true,
+          fillColor: Colors.grey.shade100,
         ),
         keyboardType: type,
         initialValue: value,
