@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:realestate/screens/clients.dart';
 import 'package:realestate/screens/collection_entry.dart';
+import 'package:realestate/screens/collection_statement_page.dart';
 import 'package:realestate/screens/flat_sale.dart';
 import 'package:realestate/screens/flatplot.dart';
 import 'package:realestate/screens/login.dart';
@@ -223,9 +224,16 @@ class _DashboardPageState extends State<DashboardPage> {
                   }),
 
                   _buildCard(
-                    "Expense Entry",
-                    "assets/icons/expense.png",
-                    () {},
+                    "Collection Statement",
+                    "assets/icons/statement.png",
+                    () {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (_) => const CollectionStatementPage(),
+                        ),
+                      );
+                    },
                   ),
                   _buildCard("User Management", "assets/icons/user.png", () {}),
                   _buildCard("Reports", "assets/icons/reports.png", () {}),
