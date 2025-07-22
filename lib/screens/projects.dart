@@ -16,6 +16,7 @@ class _ProjectInfoPageState extends State<ProjectInfoPage> {
   final TextEditingController _searchController = TextEditingController();
   String? authToken;
   int? compId;
+  bool isLoading = false;
 
   @override
   void initState() {
@@ -28,7 +29,7 @@ class _ProjectInfoPageState extends State<ProjectInfoPage> {
     authToken = prefs.getString('auth_token');
     compId = prefs.getInt('comp_id') ?? 3;
     if (authToken != null && compId != null) {
-      fetchProjects();
+      await fetchProjects();
     } else {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Authentication info missing')),
@@ -37,18 +38,38 @@ class _ProjectInfoPageState extends State<ProjectInfoPage> {
   }
 
   Future<void> fetchProjects() async {
-    final response = await http.get(
-      Uri.parse(
-        'https://darktechteam.com/realestate/api/all_project?compId=$compId',
-      ),
-      headers: {'Authorization': 'Bearer $authToken'},
-    );
+    setState(() {
+      isLoading = true;
+    });
 
-    if (response.statusCode == 200) {
-      final data = json.decode(response.body);
+    try {
+      final response = await http.get(
+        Uri.parse(
+          'https://darktechteam.com/realestate/api/all_project?compId=$compId',
+        ),
+        headers: {'Authorization': 'Bearer $authToken'},
+      );
+
+      if (response.statusCode == 200) {
+        final data = json.decode(response.body);
+        setState(() {
+          projects = data['data'];
+          filteredProjects = projects;
+        });
+      } else {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Failed to load projects: ${response.statusCode}'),
+          ),
+        );
+      }
+    } catch (e) {
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('Error fetching projects: $e')));
+    } finally {
       setState(() {
-        projects = data['data'];
-        filteredProjects = projects;
+        isLoading = false;
       });
     }
   }
@@ -262,6 +283,7 @@ class _ProjectInfoPageState extends State<ProjectInfoPage> {
                                 .toIso8601String()
                                 .split('T')
                                 .first;
+                            setState(() {}); // Refresh dropdown to update value
                           }
                         },
                         child: AbsorbPointer(
@@ -293,6 +315,7 @@ class _ProjectInfoPageState extends State<ProjectInfoPage> {
                                 .toIso8601String()
                                 .split('T')
                                 .first;
+                            setState(() {}); // Refresh dropdown to update value
                           }
                         },
                         child: AbsorbPointer(
@@ -356,6 +379,7 @@ class _ProjectInfoPageState extends State<ProjectInfoPage> {
                   onChanged: (val) {
                     if (val != null) {
                       status = val;
+                      setState(() {});
                     }
                   },
                 ),
@@ -529,32 +553,34 @@ class _ProjectInfoPageState extends State<ProjectInfoPage> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(title: const Text('Project List')),
-      body: Column(
-        children: [
-          Padding(
-            padding: const EdgeInsets.all(10),
-            child: TextField(
-              controller: _searchController,
-              onChanged: _filterProjects,
-              decoration: const InputDecoration(
-                labelText: 'Search by Name',
-                prefixIcon: Icon(Icons.search),
-                border: OutlineInputBorder(),
-              ),
+      body: isLoading
+          ? const Center(child: CircularProgressIndicator())
+          : Column(
+              children: [
+                Padding(
+                  padding: const EdgeInsets.all(10),
+                  child: TextField(
+                    controller: _searchController,
+                    onChanged: _filterProjects,
+                    decoration: const InputDecoration(
+                      labelText: 'Search by Name',
+                      prefixIcon: Icon(Icons.search),
+                      border: OutlineInputBorder(),
+                    ),
+                  ),
+                ),
+                Expanded(
+                  child: RefreshIndicator(
+                    onRefresh: fetchProjects,
+                    child: ListView.builder(
+                      itemCount: filteredProjects.length,
+                      itemBuilder: (context, index) =>
+                          _buildProjectCard(filteredProjects[index]),
+                    ),
+                  ),
+                ),
+              ],
             ),
-          ),
-          Expanded(
-            child: RefreshIndicator(
-              onRefresh: fetchProjects,
-              child: ListView.builder(
-                itemCount: filteredProjects.length,
-                itemBuilder: (context, index) =>
-                    _buildProjectCard(filteredProjects[index]),
-              ),
-            ),
-          ),
-        ],
-      ),
       floatingActionButton: FloatingActionButton(
         onPressed: () => _showAddEditBottomSheet(),
         child: const Icon(Icons.add),

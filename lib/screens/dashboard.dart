@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:realestate/Screens/AllUsersPage.dart';
 import 'package:realestate/screens/clients.dart';
 import 'package:realestate/screens/collection_entry.dart';
 import 'package:realestate/screens/collection_statement_page.dart';
@@ -235,7 +236,12 @@ class _DashboardPageState extends State<DashboardPage> {
                       );
                     },
                   ),
-                  _buildCard("User Management", "assets/icons/user.png", () {}),
+                  _buildCard("User Management", "assets/icons/user.png", () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(builder: (_) => const AllUsersPage()),
+                    );
+                  }),
                   _buildCard("Reports", "assets/icons/reports.png", () {}),
                 ],
               ),
