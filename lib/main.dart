@@ -1,7 +1,8 @@
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
-import 'package:realestate/Screens/login.dart';
+
 import 'package:device_preview/device_preview.dart';
+import 'package:realestate/screens/splash_screen.dart';
 
 // Define color constants
 const kPrimaryColor = Color.fromARGB(255, 11, 97, 236);
@@ -10,10 +11,7 @@ const kTextColor = Color(0xFF212121);
 
 void main() {
   runApp(
-    DevicePreview(
-      enabled: !kReleaseMode, // Automatically disables in release mode
-      builder: (context) => const MyApp(), // Wrap your app
-    ),
+    DevicePreview(enabled: !kReleaseMode, builder: (context) => const MyApp()),
   );
 }
 
@@ -25,15 +23,14 @@ class MyApp extends StatelessWidget {
     return MaterialApp(
       debugShowCheckedModeBanner: false,
       title: 'REAL ESTATE',
-      useInheritedMediaQuery:
-          true, // Required for device_preview to work correctly
-      locale: DevicePreview.locale(context), // Pass the simulated locale
-      builder: DevicePreview.appBuilder, // Apply the preview builder
+      useInheritedMediaQuery: true,
+      locale: DevicePreview.locale(context),
+      builder: DevicePreview.appBuilder,
       theme: ThemeData(
         primaryColor: kPrimaryColor,
         scaffoldBackgroundColor: Colors.white,
       ),
-      home: const LoginPage(),
+      home: const SplashScreen(), // Set SplashScreen as initial screen
     );
   }
 }
