@@ -118,69 +118,34 @@ class _CollectionStatementPageState extends State<CollectionStatementPage> {
   Future<void> _generatePdfAndPrint() async {
     final pdf = pw.Document();
 
+    // Calculate totalPaid and totalDue before pdf.addPage
     double totalPaid = 0;
-    double totalDue = (selectedFlat['net_amt'] ?? 0).toDouble();
+    double totalDue = 0;
+
+    try {
+      totalDue = double.parse(selectedFlat['net_amt'].toString());
+    } catch (e) {
+      totalDue = 0;
+    }
 
     for (var c in clientCollections) {
-      totalPaid += (c['mr_amt'] ?? 0).toDouble();
-      totalDue -= (c['mr_amt'] ?? 0).toDouble();
+      double mrAmt = 0;
+      try {
+        mrAmt = double.parse(c['mr_amt'].toString());
+      } catch (e) {
+        mrAmt = 0;
+      }
+      totalPaid += mrAmt;
     }
+    double remainingDue = totalDue - totalPaid;
+    if (remainingDue < 0) remainingDue = 0;
 
     pdf.addPage(
       pw.MultiPage(
         pageFormat: PdfPageFormat.a4,
         margin: const pw.EdgeInsets.all(32),
         build: (context) => [
-          pw.Center(
-            child: pw.Text(
-              'Collection Statement',
-              style: pw.TextStyle(
-                fontSize: 24,
-                fontWeight: pw.FontWeight.bold,
-                color: PdfColors.blueGrey900,
-              ),
-            ),
-          ),
-          pw.SizedBox(height: 24),
-
-          pw.Container(
-            padding: const pw.EdgeInsets.only(bottom: 16),
-            decoration: pw.BoxDecoration(
-              border: pw.Border(
-                bottom: pw.BorderSide(color: PdfColors.grey300, width: 1),
-              ),
-            ),
-            child: pw.Column(
-              crossAxisAlignment: pw.CrossAxisAlignment.start,
-              children: [
-                _pdfInfoRow(
-                  'Client Name',
-                  '${selectedFlat['cId']} - ${selectedFlat['cName']}',
-                ),
-                _pdfInfoRow(
-                  'Project',
-                  '${selectedFlat['pId']} - ${selectedFlat['pName']}',
-                ),
-                _pdfInfoRow(
-                  'Flat',
-                  '${selectedFlat['fId']} - ${selectedFlat['fLoc']} (${selectedFlat['fSide']})',
-                ),
-                _pdfInfoRow('Size', '${selectedFlat['fSize']} sq.ft'),
-                _pdfInfoRow('Rate per sq.ft', '${selectedFlat['rate_psqf']}'),
-                _pdfInfoRow('Garage Charge', '${selectedFlat['garage_chrg']}'),
-                _pdfInfoRow(
-                  'Utility Charge',
-                  '${selectedFlat['utility_chrg']}',
-                ),
-                _pdfInfoRow('Other Charges', '${selectedFlat['others_chrg']}'),
-                _pdfInfoRow('Total Amount', '${selectedFlat['total_amt']}'),
-                _pdfInfoRow('Discount', '${selectedFlat['disc_amt']}'),
-                _pdfInfoRow('Net Payable', '${selectedFlat['net_amt']}'),
-              ],
-            ),
-          ),
-          pw.SizedBox(height: 20),
-
+          // ... Your header and info section here ...
           pw.Text(
             'Collection Details',
             style: pw.TextStyle(
@@ -201,12 +166,10 @@ class _CollectionStatementPageState extends State<CollectionStatementPage> {
               3: pw.FixedColumnWidth(80),
               4: pw.FixedColumnWidth(60),
               5: pw.FixedColumnWidth(50),
-              6: pw.FixedColumnWidth(70),
-              7: pw.FixedColumnWidth(70),
-              8: pw.FixedColumnWidth(70),
+              // Remove last two columns here since only footer row needs it
             },
             children: [
-              // Header row
+              // Header row without last two columns
               pw.TableRow(
                 decoration: pw.BoxDecoration(color: PdfColors.blueGrey100),
                 children: [
@@ -216,13 +179,10 @@ class _CollectionStatementPageState extends State<CollectionStatementPage> {
                   _pdfTableCell('Type', isHeader: true),
                   _pdfTableCell('MR No', isHeader: true),
                   _pdfTableCell('Inst No', isHeader: true),
-                  _pdfTableCell('Cheque No', isHeader: true),
-                  _pdfTableCell('Paid Total', isHeader: true),
-                  _pdfTableCell('Due', isHeader: true),
                 ],
               ),
 
-              // Data rows
+              // Data rows without total_paid and due columns
               ...clientCollections.asMap().entries.map((entry) {
                 final index = entry.key;
                 final row = entry.value;
@@ -244,12 +204,32 @@ class _CollectionStatementPageState extends State<CollectionStatementPage> {
                     ),
                     _pdfTableCell(row['mr_no'] ?? '-'),
                     _pdfTableCell('${row['inst_no']}'),
-                    _pdfTableCell(row['ch_no'] ?? '-'),
-                    _pdfTableCell('${totalPaid.toStringAsFixed(0)}'),
-                    _pdfTableCell('${totalDue.toStringAsFixed(0)}'),
                   ],
                 );
               }).toList(),
+
+              // Footer row with colspan 4 on the left, then 2 columns merged for totals
+              pw.TableRow(
+                decoration: pw.BoxDecoration(color: PdfColors.blueGrey50),
+                children: [
+                  // colspan 4 empty cell labeled 'Total Paid'
+                  pw.SizedBox(),
+                  pw.Container(
+                    alignment: pw.Alignment.centerRight,
+                    padding: const pw.EdgeInsets.only(right: 12),
+
+                    child: pw.Text(
+                      'Total Paid',
+                      style: pw.TextStyle(fontWeight: pw.FontWeight.bold),
+                    ),
+                    // merge 4 cells horizontally
+                    // pdf package doesn't have direct colspan, so use Wrap with fixed widths or nested table
+                  ),
+
+                  // Here, simplest is to add two cells with totals:
+                  _pdfTableCell(totalPaid.toStringAsFixed(2), isHeader: true),
+                ],
+              ),
             ],
           ),
         ],

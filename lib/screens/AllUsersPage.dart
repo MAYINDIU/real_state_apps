@@ -57,7 +57,6 @@ class _AllUsersPageState extends State<AllUsersPage> {
         filteredUsers = users;
       });
     } else {
-      // You may want to handle errors here
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text('Failed to load users: ${response.statusCode}')),
       );
@@ -80,7 +79,7 @@ class _AllUsersPageState extends State<AllUsersPage> {
   void _showUserBottomSheet({Map? user}) {
     final isEdit = user != null;
     final username = TextEditingController(text: user?['username'] ?? '');
-    final password = TextEditingController();
+    final password = TextEditingController(); // used for both create and edit
     String selectedUserType = user?['type'] ?? 'user';
 
     showModalBottomSheet(
@@ -121,16 +120,17 @@ class _AllUsersPageState extends State<AllUsersPage> {
                     ),
                   ),
                   const SizedBox(height: 12),
-                  if (!isEdit)
-                    TextFormField(
-                      controller: password,
-                      obscureText: true,
-                      decoration: const InputDecoration(
-                        labelText: 'Password',
-                        border: OutlineInputBorder(),
-                        prefixIcon: Icon(Icons.lock),
-                      ),
+                  TextFormField(
+                    controller: password,
+                    obscureText: true,
+                    decoration: InputDecoration(
+                      labelText: isEdit
+                          ? 'New Password (optional)'
+                          : 'Password',
+                      border: const OutlineInputBorder(),
+                      prefixIcon: const Icon(Icons.lock),
                     ),
+                  ),
                   const SizedBox(height: 12),
                   DropdownButtonFormField<String>(
                     value: selectedUserType,
@@ -170,6 +170,7 @@ class _AllUsersPageState extends State<AllUsersPage> {
                             await _updateUser(
                               user!['id'],
                               username.text,
+                              password.text,
                               selectedUserType,
                             );
                           } else {
@@ -233,10 +234,25 @@ class _AllUsersPageState extends State<AllUsersPage> {
     fetchUsers();
   }
 
-  Future<void> _updateUser(int id, String username, String type) async {
+  Future<void> _updateUser(
+    int id,
+    String username,
+    String password,
+    String type,
+  ) async {
     setState(() {
       isLoading = true;
     });
+
+    final Map<String, dynamic> body = {
+      'username': username,
+      'type': type,
+      'comp_id': compId,
+    };
+
+    if (password.isNotEmpty) {
+      body['password'] = password;
+    }
 
     final response = await http.patch(
       Uri.parse('https://darktechteam.com/realestate/api/user_update/$id'),
@@ -244,10 +260,10 @@ class _AllUsersPageState extends State<AllUsersPage> {
         'Authorization': 'Bearer $authToken',
         'Content-Type': 'application/json',
       },
-      body: jsonEncode({'username': username, 'type': type, 'comp_id': compId}),
+      body: jsonEncode(body),
     );
 
-    if (response.statusCode == 200) {
+    if (response.statusCode == 201) {
       _showSuccessDialog('User updated successfully!');
     } else {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -334,8 +350,15 @@ class _AllUsersPageState extends State<AllUsersPage> {
       margin: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
       child: ListTile(
         leading: const Icon(Icons.person_outline),
-        title: Text('${user['username']}'),
-        subtitle: Text('Role: ${user['role']}'),
+        title: Text(user['username'] ?? 'Unknown'),
+        subtitle: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text('Role: ${user['role'] ?? 'N/A'}'),
+            if (user.containsKey('password') && user['password'] != null)
+              Text('Password: ${'*' * user['password'].toString().length}'),
+          ],
+        ),
         trailing: Wrap(
           children: [
             IconButton(
@@ -357,7 +380,7 @@ class _AllUsersPageState extends State<AllUsersPage> {
     return Scaffold(
       appBar: AppBar(
         title: const Text('All Users'),
-        backgroundColor: Colors.blueAccent,
+        backgroundColor: Colors.teal[700],
       ),
       body: isLoading
           ? const Center(child: CircularProgressIndicator())

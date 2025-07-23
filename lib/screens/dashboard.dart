@@ -3,6 +3,7 @@ import 'package:realestate/Screens/AllUsersPage.dart';
 import 'package:realestate/screens/clients.dart';
 import 'package:realestate/screens/collection_entry.dart';
 import 'package:realestate/screens/collection_statement_page.dart';
+import 'package:realestate/screens/expenseentry.dart';
 import 'package:realestate/screens/flat_sale.dart';
 import 'package:realestate/screens/flatplot.dart';
 import 'package:realestate/screens/login.dart';
@@ -69,11 +70,11 @@ class _DashboardPageState extends State<DashboardPage> {
 
   Widget _buildCard(String title, String imagePath, VoidCallback onTap) {
     return Material(
-      elevation: 3,
-      borderRadius: BorderRadius.circular(12),
+      elevation: 5,
+      borderRadius: BorderRadius.circular(8),
       color: Colors.white,
       child: InkWell(
-        borderRadius: BorderRadius.circular(12),
+        borderRadius: BorderRadius.circular(8),
         onTap: onTap,
         child: Padding(
           padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 8),
@@ -86,7 +87,7 @@ class _DashboardPageState extends State<DashboardPage> {
                 title,
                 textAlign: TextAlign.center,
                 style: const TextStyle(
-                  fontSize: 13,
+                  fontSize: 11,
                   fontWeight: FontWeight.w600,
                   color: Colors.black87,
                 ),
@@ -242,7 +243,14 @@ class _DashboardPageState extends State<DashboardPage> {
                       MaterialPageRoute(builder: (_) => const AllUsersPage()),
                     );
                   }),
-                  _buildCard("Reports", "assets/icons/reports.png", () {}),
+                  _buildCard("Expense Entry", "assets/icons/expense.png", () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (_) => const ExpenseEntryPage(),
+                      ),
+                    );
+                  }),
                 ],
               ),
             ),
